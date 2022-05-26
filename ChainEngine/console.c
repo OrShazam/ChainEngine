@@ -33,7 +33,7 @@ void PrintError(const LPSTR fmt, ...){
                   NULL, errorCode,
                   MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
                   (LPTSTR)&message, 0, NULL);
-	printColor(CONSOLE_WHITE,"LastError: %s",message);
+	printColor(CONSOLE_WHITE,"LastError: %s\n",message);
 	va_end(args);
 }
 void PrintSuccess(const LPSTR fmt, ...){
