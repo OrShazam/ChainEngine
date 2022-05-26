@@ -44,7 +44,7 @@ BYTE* HexTranslateSafe(const char* text, int* length){
 	BYTE* bytes = HeapAlloc(
 		GetProcessHeap(),
 		HEAP_ZERO_MEMORY,
-		len);
+		len+1);
 	HexTranslate(text, bytes,len);
 	*length = len;
 	return bytes;
