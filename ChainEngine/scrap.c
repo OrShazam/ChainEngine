@@ -1,57 +1,39 @@
 
 #include "console.h"
 #include "scrap.h"
-#include "psapi.h"
 
 void FillScraperData(PScraperData data, const char* dllName){
-	static NTSTATUS(WINAPI *_GetModuleInformation)(
-		IN  HANDLE hProcess,
-		IN  HMODULE hModule,
-		OUT LPMODULEINFO lpmodinfo,
-		IN DWORD cb
-	) = NULL;
 	data->hModule = LoadLibraryA(dllName);
-	if (data->hModule == NULL){
-		PrintError("%s Couldn't be loaded.\n", dllName);
-		return;
-	}
-	if (!_GetModuleInformation){
-		HMODULE hPsapi = LoadLibraryA("psapi.dll");
-		if (!hPsapi){
-			PrintError("psapi.dll couldn't be loaded.\n");
-			return;
+	FindCodeSection(data->hModule, &data->SearchBase, &data->SearchSize);
+}
+VOID FindCodeSection(LPVOID imageBase, LPVOID* start, ULONG* size){
+	*start = NULL; *size = 0;
+	PIMAGE_NT_HEADERS libNtHeader = (PIMAGE_NT_HEADERS)(imageBase +
+		((PIMAGE_DOS_HEADER)imageBase)->e_lfanew);
+	int numSections = libNtHeader->FileHeader.NumberOfSections;
+	PIMAGE_SECTION_HEADER firstSection = (PIMAGE_SECTION_HEADER)
+		((char*)imageBase + sizeof(IMAGE_DOS_HEADER) + sizeof(IMAGE_NT_HEADERS));
+	for (int i = 0; i < numSections; i++){
+		PIMAGE_SECTION_HEADER currSection = firstSection + i;
+		if (strcmp(".text",currSection.Name) == 0){
+			*start = (char*)imageBase + start.VirtualAddress;
+			*size = start.SizeOfRawData;
 		}
-		FARPROC procPtr = GetProcAddress(hPsapi,"GetModuleInformation");
-		if (!procPtr){
-			PrintError("GetModuleInformation couldn't be found\n");
-			return;
-		}
-		
-		_GetModuleInformation = (NTSTATUS(WINAPI*)(
-			HANDLE,
-			HMODULE,
-			LPMODULEINFO,
-			DWORD)		
-		)procPtr;
 	}
-	MODULEINFO info;
-	DWORD cb = sizeof(MODULEINFO);
-	if (!_GetModuleInformation(GetCurrentProcess(),
-		data->hModule,
-		&info, cb)){
-		PrintError("Can't retrieve module information.\n");
-		return;
+	if (!*start){
+		// assume it's first section
+		*start = (char*)imageBase + firstSection.VirtualAddress;
+		*size = firstSection.SizeOfRawData;
 	}
-	data->Base = (LPVOID)info.lpBaseOfDll;
-	data->ImageSize = info.SizeOfImage;
+	
 }
 
 BOOL FindBytes(PScraperData data, BYTE* bytes, size_t sizeOfBytes, LPVOID* address){
 	BOOL success = FALSE;
-	LPVOID start = data->Base;
+	LPVOID start = data->SearchBase;
 	printf("Base: %p\n",start);
-	printf("Searching from %p to %p\n",data->Base, data->Base + data->ImageSize);
-	for (;start < data->Base + data->ImageSize; (BYTE*)start++){
+	printf("Searching from %p to %p\n",data->SearchBase, data->SearchBase + data->SearchSize);
+	for (;start < data->SearchBase + data->SearchSize; (BYTE*)start++){
 		if (success) break;
 		for (size_t i = 0; i < sizeOfBytes; i++){
 			if (bytes[i] != ((BYTE *)start)[i])
