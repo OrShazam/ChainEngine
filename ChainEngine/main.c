@@ -21,10 +21,10 @@ int main(int argc, char* argv[]){
 	memset(&ROPCHAIN[0],0,1024);
 	int lengths[50];
 	while (*text != '\n' && i < 50){
-		len = strlen(text);
-		text[len] = (char)RET;
-		buffers[i++] = HexTranslateSafe(text,&lengths[i]);
-		text += len + 2;
+		buffers[i] = HexTranslateSafe(text,&lengths[i]);
+		*((BYTE*)buffers[i] + lengths[i]) = RET;
+		lengths[i]++; i++;
+		text += strlen(text);
 	}
 	j = --i;
 	for (; i >= 0; i--){
@@ -39,11 +39,11 @@ int main(int argc, char* argv[]){
 	LPVOID address;
 	for (int i = 0; i < j; i++){
 		if (lengths[i] > 0){
-			if (FindBytes(&data,buffers[i],len,&address)){
-				printf("Found byte sequence '%x...RET' at address %p\n", *buffers[i], address);
+			if (FindBytes(&data,buffers[i],lengths[i],&address)){
+				printf("Found byte sequence #%d at address %p\n", i, address);
 			}
 			else {				
-				PrintError("Couldn't find byte sequence '%x...'\n", *buffers[i]);
+				PrintError("Couldn't find byte sequence #%d\n", i);
 				goto cleanup;
 			}
 			prevIdx = idx;
@@ -54,13 +54,14 @@ int main(int argc, char* argv[]){
 		}
 	}
 	len = strlen(&ROPCHAIN[0]);
-	printf("char ROPCHAIN[] =\n");
+	printf("char ROPCHAIN[] =\n\"");
 	for (int i = 0; i < len; i++){
 		if (i % 16 == 0){
 			printf("\n");
 		}
 		printf("\\x%x",ROPCHAIN[i]);
 	}
+	printf("\";");
 	cleanup:
 	for (int i = 0; i < j; i++){
 		if (buffers[i] != NULL){
