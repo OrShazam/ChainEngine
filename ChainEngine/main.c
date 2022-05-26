@@ -16,7 +16,7 @@ int main(int argc, char* argv[]){
 	int len;
 	char* text = argv[1];
 	TokenizeSemicolons(text);
-	PBYTE buffers[50]; int i =0, j, idx=0,prevIdx;
+	PBYTE buffers[50]; int i =0, j, idx=0;
 	BYTE ROPCHAIN[1024];
 	memset(&ROPCHAIN[0],0,1024);
 	int lengths[50];
@@ -46,11 +46,11 @@ int main(int argc, char* argv[]){
 				PrintError("Couldn't find byte sequence #%d\n", i);
 				goto cleanup;
 			}
-			prevIdx = idx;
-			for (; idx < prevIdx + sizeof(LPVOID) / sizeof(BYTE); idx++){
+			for (int k = 0; k < sizeof(LPVOID) / sizeof(BYTE); k++){
 				
-				ROPCHAIN[idx] = (BYTE)(((ULONGLONG)address >> (8 * idx)) & 0xff);
+				ROPCHAIN[idx+k] = (BYTE)(((ULONGLONG)address >> (8 * k)) & 0xff);
 			}
+			idx += sizeof(LPVOID) / sizeof(BYTE);
 		}
 	}
 	len = strlen(&ROPCHAIN[0]);
